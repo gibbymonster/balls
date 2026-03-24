@@ -5,15 +5,14 @@ const countEl = document.getElementById('count');
 let balls = [];
 let w, h;
 
-// load the boing sound
-const boingSound = new Audio('boing.mp3');
-boingSound.volume = 0.6;   // tweak this if it's too loud/quiet
+// boing sound
+const boing = new Audio('boing.mp3');
+boing.preload = 'auto';
 
 function playBoing() {
-    // clone so multiple can play at once without cutting off
-    const sound = boingSound.cloneNode();
-    sound.volume = 0.5 + Math.random() * 0.3;
-    sound.play().catch(() => {}); // ignore if blocked
+    const sound = boing.cloneNode();
+    sound.volume = 0.45 + Math.random() * 0.35;
+    sound.play().catch(() => {});
 }
 
 function resize() {
@@ -37,29 +36,12 @@ class Ball {
 
         let bounced = false;
 
-        // bouncy walls
-        if (this.x - this.r < 0) { 
-            this.x = this.r; 
-            this.vx *= -0.96; 
-            bounced = true;
-        }
-        if (this.x + this.r > w) { 
-            this.x = w - this.r; 
-            this.vx *= -0.96; 
-            bounced = true;
-        }
-        if (this.y - this.r < 0) { 
-            this.y = this.r; 
-            this.vy *= -0.96; 
-            bounced = true;
-        }
-        if (this.y + this.r > h) { 
-            this.y = h - this.r; 
-            this.vy *= -0.92; 
-            bounced = true;
-        }
+        if (this.x - this.r < 0) { this.x = this.r; this.vx *= -0.96; bounced = true; }
+        if (this.x + this.r > w) { this.x = w - this.r; this.vx *= -0.96; bounced = true; }
+        if (this.y - this.r < 0) { this.y = this.r; this.vy *= -0.96; bounced = true; }
+        if (this.y + this.r > h) { this.y = h - this.r; this.vy *= -0.92; bounced = true; }
 
-        this.vy += 0.15; // gravity
+        this.vy += 0.15;
 
         if (bounced) playBoing();
     }
@@ -81,7 +63,6 @@ function collide(b1, b2) {
     const dx = b2.x - b1.x;
     const dy = b2.y - b1.y;
     const dist = Math.hypot(dx, dy);
-
     if (dist >= b1.r + b2.r || dist === 0) return;
 
     const nx = dx / dist;
@@ -102,9 +83,7 @@ function collide(b1, b2) {
     b2.vx -= dot * nx * 1.05;
     b2.vy -= dot * ny * 1.05;
 
-    // boing on ball collision too
-    const speed = Math.hypot(dvx, dvy);
-    if (speed > 3) playBoing();
+    if (Math.hypot(dvx, dvy) > 3) playBoing();
 }
 
 function animate() {
@@ -126,14 +105,14 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-// click spawn
+// click to spawn
 canvas.addEventListener('click', e => {
     for (let i = 0; i < 8; i++) {
         balls.push(new Ball(e.clientX, e.clientY));
     }
 });
 
-// space clear
+// space to clear
 document.addEventListener('keydown', e => {
     if (e.key === ' ') balls = [];
 });
