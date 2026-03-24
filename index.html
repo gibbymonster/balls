@@ -3,29 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ball go brrr</title>
+    <title>boing balls go crazy</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #111;
-        }
-        canvas {
-            display: block;
-        }
+        body { margin:0; overflow:hidden; background:#111; }
+        canvas { display:block; }
         #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: monospace;
-            pointer-events: none;
+            position: absolute; top:10px; left:10px; color:#fff; 
+            font-family:monospace; pointer-events:none; z-index:10;
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <div id="info">click to add balls • space = clear • balls: <span id="count">0</span></div>
+    <div id="info">click = spawn 8 balls • space = nuke • balls: <span id="count">0</span></div>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -33,90 +23,124 @@
         const countEl = document.getElementById('count');
 
         let balls = [];
-        let width, height;
+        let w, h;
+
+        // boing sound
+        const boing = new Audio('boing.mp3');
+        boing.preload = 'auto';
+
+        function playBoing() {
+            const sound = boing.cloneNode();
+            sound.volume = 0.45 + Math.random() * 0.35;
+            sound.play().catch(() => {});
+        }
 
         function resize() {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width;
-            canvas.height = height;
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
         }
 
         class Ball {
             constructor(x, y) {
-                this.x = x || Math.random() * width;
-                this.y = y || Math.random() * height;
-                this.radius = Math.random() * 20 + 10;
-                this.vx = (Math.random() - 0.5) * 8;
-                this.vy = (Math.random() - 0.5) * 8;
-                this.color = `hsl(${Math.random()*360}, 90%, 65%)`;
+                this.x = x || Math.random() * w;
+                this.y = y || Math.random() * h;
+                this.r = Math.random() * 18 + 12;
+                this.vx = (Math.random() - 0.5) * 10;
+                this.vy = (Math.random() - 0.5) * 10;
+                this.color = `hsl(${Math.random()*360}, 85%, 62%)`;
             }
 
             update() {
                 this.x += this.vx;
                 this.y += this.vy;
 
-                // bounce off walls
-                if (this.x - this.radius < 0 || this.x + this.radius > width) this.vx *= -1;
-                if (this.y - this.radius < 0 || this.y + this.radius > height) this.vy *= -1;
+                let bounced = false;
 
-                // gravity-ish bounce on bottom
-                if (this.y + this.radius > height) {
-                    this.y = height - this.radius;
-                    this.vy *= -0.85;
-                }
+                if (this.x - this.r < 0) { this.x = this.r; this.vx *= -0.96; bounced = true; }
+                if (this.x + this.r > w) { this.x = w - this.r; this.vx *= -0.96; bounced = true; }
+                if (this.y - this.r < 0) { this.y = this.r; this.vy *= -0.96; bounced = true; }
+                if (this.y + this.r > h) { this.y = h - this.r; this.vy *= -0.92; bounced = true; }
+
+                this.vy += 0.15;
+
+                if (bounced) playBoing();
             }
 
             draw() {
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
                 ctx.fill();
 
-                // simple shine
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
                 ctx.beginPath();
-                ctx.arc(this.x - this.radius/3, this.y - this.radius/3, this.radius/4, 0, Math.PI * 2);
+                ctx.arc(this.x - this.r*0.35, this.y - this.r*0.35, this.r*0.3, 0, Math.PI*2);
                 ctx.fill();
             }
         }
 
-        function animate() {
-            ctx.fillStyle = 'rgba(17,17,17,0.2)';
-            ctx.fillRect(0, 0, width, height);
+        function collide(b1, b2) {
+            const dx = b2.x - b1.x;
+            const dy = b2.y - b1.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist >= b1.r + b2.r || dist === 0) return;
 
-            for (let i = balls.length - 1; i >= 0; i--) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            const overlap = (b1.r + b2.r) - dist;
+            b1.x -= nx * overlap * 0.5;
+            b1.y -= ny * overlap * 0.5;
+            b2.x += nx * overlap * 0.5;
+            b2.y += ny * overlap * 0.5;
+
+            const dvx = b2.vx - b1.vx;
+            const dvy = b2.vy - b1.vy;
+            const dot = dvx * nx + dvy * ny;
+
+            b1.vx += dot * nx * 1.05;
+            b1.vy += dot * ny * 1.05;
+            b2.vx -= dot * nx * 1.05;
+            b2.vy -= dot * ny * 1.05;
+
+            if (Math.hypot(dvx, dvy) > 3) playBoing();
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(17,17,17,0.22)';
+            ctx.fillRect(0, 0, w, h);
+
+            for (let i = 0; i < balls.length; i++) {
                 balls[i].update();
                 balls[i].draw();
+            }
+
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    collide(balls[i], balls[j]);
+                }
             }
 
             countEl.textContent = balls.length;
             requestAnimationFrame(animate);
         }
 
-        // click to spawn balls
-        canvas.addEventListener('click', (e) => {
-            for (let i = 0; i < 5; i++) {  // spawn 5 at once for fun
+        canvas.addEventListener('click', e => {
+            for (let i = 0; i < 8; i++) {
                 balls.push(new Ball(e.clientX, e.clientY));
             }
         });
 
-        // space to clear
-        document.addEventListener('keydown', (e) => {
-            if (e.key === ' ') {
-                balls = [];
-            }
+        document.addEventListener('keydown', e => {
+            if (e.key === ' ') balls = [];
         });
 
-        // start
         window.addEventListener('resize', resize);
         resize();
         animate();
 
-        // spawn some starter balls
-        for (let i = 0; i < 15; i++) {
-            balls.push(new Ball());
-        }
+        // starter balls
+        for (let i = 0; i < 25; i++) balls.push(new Ball());
     </script>
 </body>
 </html>
