@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ball go brrr</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="info">click to add balls • space = clear • balls: <span id="count">0</span></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const countEl = document.getElementById('count');
+
+        let balls = [];
+        let width, height;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+
+        class Ball {
+            constructor(x, y) {
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.radius = Math.random() * 20 + 10;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.color = `hsl(${Math.random()*360}, 90%, 65%)`;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // bounce off walls
+                if (this.x - this.radius < 0 || this.x + this.radius > width) this.vx *= -1;
+                if (this.y - this.radius < 0 || this.y + this.radius > height) this.vy *= -1;
+
+                // gravity-ish bounce on bottom
+                if (this.y + this.radius > height) {
+                    this.y = height - this.radius;
+                    this.vy *= -0.85;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // simple shine
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius/3, this.y - this.radius/3, this.radius/4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(17,17,17,0.2)';
+            ctx.fillRect(0, 0, width, height);
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                balls[i].update();
+                balls[i].draw();
+            }
+
+            countEl.textContent = balls.length;
+            requestAnimationFrame(animate);
+        }
+
+        // click to spawn balls
+        canvas.addEventListener('click', (e) => {
+            for (let i = 0; i < 5; i++) {  // spawn 5 at once for fun
+                balls.push(new Ball(e.clientX, e.clientY));
+            }
+        });
+
+        // space to clear
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') {
+                balls = [];
+            }
+        });
+
+        // start
+        window.addEventListener('resize', resize);
+        resize();
+        animate();
+
+        // spawn some starter balls
+        for (let i = 0; i < 15; i++) {
+            balls.push(new Ball());
+        }
+    </script>
+</body>
+</html>
